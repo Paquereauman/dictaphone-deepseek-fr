@@ -1,0 +1,64 @@
+{
+  "host": "127.0.0.1",
+  "port": 8765,
+
+  "model": "small",
+  "language": "fr",
+  "device": "auto",
+  "compute_type": "auto",
+  "beam_size": 5,
+  "partial_beam_size": 1,
+
+  "silence_ms": 700,
+  "min_speech_ms": 250,
+  "max_chunk_s": 18.0,
+  "partial_interval_ms": 800,
+
+  "preload": false,
+  "warmup": true,
+
+  "vocabulary": "DeepSeek, DeepSeek Harness, Claude Code, ChatGPT, WebSocket, FastAPI, Python, Whisper, Chrome, Windows, API, extension.",
+
+  "voice_commands": {
+    "whole_segment": true,
+    "submit": ["valider", "valide", "envoyer", "envoie", "envoie le message", "vasy", "cest bon"],
+    "stop": ["stop", "arret", "arrete", "arreter", "arrete la dictee", "fin de dictee"]
+  },
+
+  "cleanup": {
+    "enabled": true,
+    "capitalize": true,
+    "remove_fillers": true,
+    "french_typography": false,
+
+    "replacements": {
+      "deep seek": "DeepSeek",
+      "deep seak": "DeepSeek",
+      "deep sick": "DeepSeek",
+      "deep sik": "DeepSeek",
+      "deep sec": "DeepSeek",
+      "deep sea": "DeepSeek",
+      "deep-sea": "DeepSeek",
+      "deep seeke": "DeepSeek",
+      "dipsy et que": "DeepSeek",
+      "dipsy est que": "DeepSeek",
+      "dipsy": "DeepSeek",
+      "dip seek": "DeepSeek",
+      "endipse": "DeepSeek",
+      "d'endipse": "DeepSeek",
+      "deepseek aie": "DeepSeek AI",
+      "deep seek ai": "DeepSeek AI",
+
+      "cloud code": "Claude Code",
+      "claude code": "Claude Code",
+      "gpt chat": "ChatGPT",
+      "chat gpt": "ChatGPT",
+
+      "harness": "Harness",
+      "whisper": "Whisper",
+      "fast api": "FastAPI",
+      "web socket": "WebSocket",
+      "web-socket": "WebSocket"
+    }
+  }
+}

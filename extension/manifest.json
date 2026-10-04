@@ -1,0 +1,71 @@
+{
+  "manifest_version": 3,
+  "name": "Dictaphone DeepSeek FR — local & GPU",
+  "version": "1.0.0",
+  "description": "Dictée vocale française 100 % locale (Whisper sur GPU) pour DeepSeek, DeepSeek Harness et leurs applications PWA.",
+  "minimum_chrome_version": "116",
+
+  "permissions": ["storage", "tabs", "nativeMessaging"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "https://chat.deepseek.com/*",
+    "https://*.deepseek.com/*"
+  ],
+
+  "background": { "service_worker": "background.js" },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "http://127.0.0.1/*",
+        "http://localhost/*",
+        "https://chat.deepseek.com/*",
+        "https://*.deepseek.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["pcm-worklet.js"],
+      "matches": [
+        "http://127.0.0.1/*",
+        "http://localhost/*",
+        "https://chat.deepseek.com/*",
+        "https://*.deepseek.com/*"
+      ]
+    }
+  ],
+
+  "action": {
+    "default_title": "Dictaphone FR — cliquer pour dicter",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "options_page": "options.html",
+
+  "commands": {
+    "toggle-dictation": {
+      "suggested_key": { "default": "Alt+Shift+D" },
+      "description": "Démarrer / arrêter la dictée"
+    }
+  }
+}

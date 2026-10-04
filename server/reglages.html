@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Dictaphone FR — réglages</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 15px/1.6 "Segoe UI", system-ui, sans-serif; background:#0f1116; color:#e7e9ee;
+         max-width: 620px; margin: 0 auto; padding: 48px 22px; text-align: center; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .sub { color:#8b93a3; font-size: 13.5px; margin-bottom: 26px; }
+  .card { background:#161a21; border:1px solid #262d3a; border-radius:14px; padding:22px; text-align:left; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color:#c8cedb; }
+  ol { margin: 0; padding-left: 20px; color:#a9b2c2; font-size: 13.5px; }
+  li { margin: 5px 0; }
+  button { font: inherit; margin-top: 18px; padding: 10px 18px; border-radius: 10px;
+           border:1px solid #3f6ce0; background:#2f5bd6; color:#fff; cursor:pointer; }
+  button:hover { background:#3a66e2; }
+  .ok { color:#5ddc8b; } .bad { color:#ff8b7a; }
+  code { background:#1b2029; border-radius:4px; padding:1px 5px; font-size:13px; }
+  #etat { margin-top: 18px; font-size: 13.5px; }
+</style>
+</head>
+<body>
+  <h1>Réglages du Dictaphone</h1>
+  <div class="sub">Vocabulaire, corrections, commandes vocales, modèle.</div>
+
+  <div class="card">
+    <h2>Les réglages s'ouvrent dans un nouvel onglet</h2>
+    <div id="etat">…</div>
+
+    <div id="secours" hidden>
+      <p style="color:#a9b2c2; font-size:13.5px; margin:14px 0 0">
+        Si rien ne s'est ouvert, deux solutions :
+      </p>
+      <ol>
+        <li>Clique sur l'<b>icône de l'extension</b> dans la barre d'outils, puis sur <b>« Tous les réglages… »</b>.</li>
+        <li>Ouvre <code>chrome://extensions</code>, trouve <b>Dictaphone DeepSeek FR</b>, clique sur <b>Détails</b>, puis <b>Options de l'extension</b>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <button id="retry">Rouvrir les réglages</button>
+
+<script>
+const etat = document.getElementById("etat");
+
+function demander() {
+  etat.textContent = "Demande envoyée à l'extension…";
+  window.postMessage({ dsd: "open-options" }, "*");
+}
+
+demander();
+document.getElementById("retry").addEventListener("click", demander);
+
+// Si l'extension ne repond pas (absente, ou desactivee), on propose la
+// solution manuelle au bout d'une seconde et demie.
+setTimeout(() => {
+  etat.innerHTML = '<span class="ok">C\'est fait</span> — cherche un onglet intitulé « Dictaphone FR — réglages ».';
+  document.getElementById("secours").hidden = false;
+}, 1500);
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Dictaphone FR — page de diagnostic extension</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 14px/1.55 "Segoe UI", system-ui, sans-serif; background:#0f1116; color:#e7e9ee;
+         max-width: 780px; margin: 0 auto; padding: 28px 22px 90px; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  .sub { color:#8b93a3; font-size: 13px; margin-bottom: 22px; }
+  .composer { min-height: 56px; padding: 13px 15px; border-radius: 12px; border: 1px solid #2a3240;
+              background:#161a21; outline: none; white-space: pre-wrap; }
+  .composer:focus { border-color:#3f6ce0; }
+  .composer:empty:before { content: attr(data-placeholder); color:#5c6577; }
+  .bar { display: flex; gap: 10px; align-items: center; margin: 12px 0 22px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 9px; border:1px solid #333a48;
+           background:#1b2029; color:#e7e9ee; cursor:pointer; }
+  .stat { display:flex; gap:22px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stat div { color:#8b93a3; font-size: 12.5px; }
+  .stat b { color:#e7e9ee; font-size: 16px; display:block; font-variant-numeric: tabular-nums; }
+  pre { background:#161a21; border:1px solid #262d3a; border-radius:10px; padding:12px;
+        max-height: 300px; overflow:auto; font-size: 12px; color:#a9b2c2; margin:0; }
+  .note { color:#7a8394; font-size: 12.5px; margin-top: 14px; }
+  code { background:#1b2029; border-radius:4px; padding:1px 5px; }
+</style>
+</head>
+<body>
+  <h1>Diagnostic de l'extension</h1>
+  <div class="sub">
+    Cette page simule le champ de saisie de DeepSeek. Le bouton micro de l'extension doit apparaître en bas à droite,
+    et le texte dicté doit atterrir ici — sans rien envoyer à DeepSeek.
+  </div>
+
+  <div class="composer" id="composer" data-composer-input contenteditable="true" role="textbox"
+       data-placeholder="Le texte dicté apparaît ici…"></div>
+
+  <div class="bar">
+    <button id="clear">Vider</button>
+    <button id="reset">Remettre les compteurs à zéro</button>
+    <button id="copy">Copier le journal</button>
+  </div>
+
+  <div class="stat">
+    <div>Envois (Entrée)<b id="n-enters">0</b></div>
+    <div>Annulations (Ctrl+Z)<b id="n-undos">0</b></div>
+    <div>Morceaux insérés<b id="n-inserts">0</b></div>
+    <div>Micros ouverts<b id="n-mics">0</b></div>
+    <div>Dernier envoi<b id="n-last">—</b></div>
+  </div>
+
+  <pre id="log">—</pre>
+  <div class="note">
+    Ligne de commande : <code>.venv\Scripts\python.exe tests\streamtest.py</code> pour tester le serveur seul.
+  </div>
+
+<script>
+const S = { enters: 0, undos: 0, inserts: 0, last: "", events: [] };
+window.__dsdTest = S;
+
+const composer = document.getElementById("composer");
+const logEl = document.getElementById("log");
+
+/**
+ * Nombre de captures micro actuellement retenues par l'extension.
+ * L'extension l'expose sur son element hote (data-dsd-mic) : la page ne peut
+ * pas instrumenter getUserMedia, car content script et page vivent dans des
+ * mondes JavaScript separes.
+ */
+function liveTracks() {
+  const host = document.getElementById("dsd-dictaphone-host");
+  return host ? Number(host.dataset.dsdMic || 0) : -1;
+}
+
+function render() {
+  document.getElementById("n-enters").textContent = S.enters;
+  document.getElementById("n-undos").textContent = S.undos;
+  document.getElementById("n-inserts").textContent = S.inserts;
+  document.getElementById("n-mics").textContent = liveTracks();
+  document.getElementById("n-last").textContent = S.last ? `« ${S.last} »` : "—";
+  logEl.textContent = S.events.length ? S.events.join("\n") : "—";
+}
+
+function note(kind, detail) {
+  S.events.push(`[${new Date().toLocaleTimeString()}] ${kind}${detail ? " — " + detail : ""}`);
+  if (S.events.length > 200) S.events.shift();
+  render();
+}
+
+composer.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && (e.key === "z" || e.key === "Z")) {
+    S.undos += 1;
+    note("Ctrl+Z reçu (annulation)");
+    render();
+    return;
+  }
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    S.enters += 1;
+    S.last = composer.textContent.trim();
+    note("Entrée reçue → ENVOI", `contenu : « ${S.last} »`);
+    composer.textContent = "";
+    render();
+  }
+});
+
+// Detecte les insertions pour compter les morceaux.
+let lastLen = 0;
+new MutationObserver(() => {
+  const len = composer.textContent.length;
+  if (len > lastLen) { S.inserts += 1; note("Texte inséré", `${len - lastLen} caractères`); }
+  lastLen = len;
+  render();
+}).observe(composer, { childList: true, characterData: true, subtree: true });
+
+document.getElementById("clear").onclick = () => { composer.textContent = ""; lastLen = 0; };
+document.getElementById("reset").onclick = () => {
+  S.enters = 0; S.undos = 0; S.inserts = 0; S.last = ""; S.events = []; render();
+};
+// Les pistes passent a "ended" sans evenement : on rafraichit periodiquement.
+setInterval(render, 400);
+document.getElementById("copy").onclick = () => navigator.clipboard.writeText(logEl.textContent);
+
+render();
+</script>
+</body>
+</html>

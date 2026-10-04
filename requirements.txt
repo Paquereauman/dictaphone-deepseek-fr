@@ -1,0 +1,15 @@
+# --- Coeur : reconnaissance vocale locale (Whisper via CTranslate2) ---
+faster-whisper>=1.1.0
+
+# --- Serveur local (HTTP + WebSocket temps reel) ---
+fastapi>=0.115.0
+uvicorn>=0.32.0
+websockets>=12.0
+
+# --- Calcul ---
+numpy>=1.24
+
+# --- Bibliotheques CUDA pour l'acceleration GPU (uniquement Windows/Linux) ---
+# CTranslate2 ne fournit pas cuBLAS/cuDNN : ces paquets les apportent dans le venv.
+nvidia-cublas-cu12>=12.4 ; sys_platform == "win32" or sys_platform == "linux"
+nvidia-cudnn-cu12>=9.1  ; sys_platform == "win32" or sys_platform == "linux"

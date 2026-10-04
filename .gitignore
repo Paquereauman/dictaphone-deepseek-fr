@@ -1,0 +1,18 @@
+# Environnement Python et caches
+.venv/
+__pycache__/
+*.pyc
+
+# Journaux
+logs/
+*.log
+
+# Secrets : clé privée de signature de l'extension
+*.pem
+native/key.pem
+
+# Manifeste natif propre à ta machine (chemin absolu) : voir le fichier .example
+native/com.dictaphone.launcher.json
+
+# Enregistrements de test (ta voix)
+*.wav

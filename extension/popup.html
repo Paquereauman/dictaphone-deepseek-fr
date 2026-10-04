@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Dictaphone FR</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { width: 340px; margin: 0; padding: 14px;
+         font: 13px/1.45 "Segoe UI", system-ui, sans-serif;
+         background: #101216; color: #e7e9ee; }
+  h1 { font-size: 14px; margin: 0; display: flex; align-items: center; gap: 7px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #4a5162; flex: none; }
+  .dot.ok { background: #2ecc71; } .dot.bad { background: #e74c3c; }
+  .status { color: #8b93a3; font-size: 11.5px; margin: 5px 0 12px; min-height: 15px; }
+
+  button { font: inherit; cursor: pointer; border-radius: 9px; border: 1px solid #333a48;
+           background: #1b2029; color: #e7e9ee; padding: 8px 12px; }
+  button:hover { background: #232a35; }
+  button.primary { width: 100%; padding: 11px; font-weight: 600;
+                   background: #2f5bd6; border-color: #3f6ce0; }
+  button.primary:hover { background: #3a66e2; }
+  button.rec { background: #c0392b; border-color: #e05a4a; }
+  button.mini { padding: 4px 9px; font-size: 12px; }
+
+  fieldset { border: 1px solid #232a36; border-radius: 11px; padding: 10px 12px 12px; margin: 0 0 11px; }
+  legend { color: #9aa3b2; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; padding: 0 6px; }
+  label { display: block; color: #c8cedb; margin: 7px 0 3px; font-size: 12px; }
+  input[type=text], textarea { width: 100%; padding: 7px 9px; border-radius: 8px;
+        border: 1px solid #2a3240; background: #161a21; color: #e7e9ee; font: inherit; }
+  textarea { resize: vertical; min-height: 52px; }
+  .pair { display: flex; gap: 6px; align-items: flex-end; }
+  .pair > div { flex: 1; min-width: 0; }
+  .pair button { flex: none; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-height: 96px; overflow: auto; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; background: #1b2029;
+          border: 1px solid #2a3240; border-radius: 20px; padding: 2px 4px 2px 9px;
+          font-size: 11.5px; max-width: 100%; }
+  .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip b { color: #7fb3ff; font-weight: 500; }
+  .chip button { border: none; background: none; color: #7a8394; padding: 0 4px; font-size: 13px; line-height: 1; }
+  .chip button:hover { color: #ff8b7a; background: none; }
+  .empty { color: #6f7787; font-size: 11.5px; margin-top: 7px; }
+
+  .check { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: #c8cedb; font-size: 12px; }
+  .check input { width: 15px; height: 15px; accent-color: #4f7cff; }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { flex: 1; }
+  a { color: #7fb3ff; font-size: 12px; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .hint { color: #6f7787; font-size: 11px; margin-top: 5px; }
+</style>
+</head>
+<body>
+  <h1><span class="dot" id="dot"></span> Dictaphone FR</h1>
+  <div class="status" id="status">connexion…</div>
+
+  <button class="primary" id="toggle">Dicter dans cet onglet</button>
+  <div class="hint" id="toggleHint"></div>
+
+  <fieldset style="margin-top:12px">
+    <legend>Correction rapide</legend>
+    <div class="pair">
+      <div><label for="heard">J'ai entendu</label><input type="text" id="heard" placeholder="dipsy"></div>
+      <div><label for="fixed">Écrire</label><input type="text" id="fixed" placeholder="DeepSeek"></div>
+      <button class="mini" id="addFix" title="Ajouter">+</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="empty" id="emptyFixes">Aucune correction personnelle.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Mes mots</legend>
+    <textarea id="vocabulary" placeholder="DeepSeek, Harness, mon projet, mes clients…"></textarea>
+    <div class="hint">Séparés par des virgules. Whisper les reconnaîtra en priorité.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Comportement</legend>
+    <div class="check"><input type="checkbox" id="autoInsert"><label for="autoInsert" style="margin:0">Écrire dans le champ de saisie</label></div>
+    <div class="check"><input type="checkbox" id="showPartial"><label for="showPartial" style="margin:0">Aperçu pendant que je parle</label></div>
+    <div class="check"><input type="checkbox" id="beep"><label for="beep" style="margin:0">Bip au démarrage / arrêt</label></div>
+    <div class="check"><input type="checkbox" id="stopOnHide"><label for="stopOnHide" style="margin:0">Arrêter si je change d'onglet</label></div>
+  </fieldset>
+
+  <div class="footer">
+    <a href="#" id="options">Tous les réglages…</a>
+    <span class="hint" id="saved"></span>
+  </div>
+
+<script src="popup.js"></script>
+</body>
+</html>

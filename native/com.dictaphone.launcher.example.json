@@ -1,0 +1,7 @@
+{
+  "name": "com.dictaphone.launcher",
+  "description": "Demarre le serveur Dictaphone FR",
+  "path": "C:\\CHEMIN\\VERS\\dictaphone\\native\\host.bat",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://<ID-DE-TON-EXTENSION>/"]
+}

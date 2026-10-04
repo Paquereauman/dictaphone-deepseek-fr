@@ -1,0 +1,10 @@
+/* Le style de l'interface est enferme dans un Shadow DOM (voir content.js),
+   donc il ne peut pas etre casse par le CSS de DeepSeek.
+   Ce fichier ne contient que le strict necessaire pour l'hote. */
+
+#dsd-dictaphone-host {
+  all: initial;
+  position: fixed;
+  z-index: 2147483600;
+  pointer-events: none;
+}
