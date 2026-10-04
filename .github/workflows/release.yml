@@ -1,0 +1,27 @@
+name: Build installer
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NSIS
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Build Dictaphone-Setup.exe and extension zip
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('extension/manifest.json'))['version'])")
+          makensis -V2 -DVERSION=$VERSION installer/dictaphone.nsi
+          (cd extension && zip -qr ../dictaphone-extension.zip .)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', env.VERSION) }}
+          name: Dictaphone DeepSeek FR ${{ env.VERSION }}
+          files: |
+            Dictaphone-Setup.exe
+            dictaphone-extension.zip
