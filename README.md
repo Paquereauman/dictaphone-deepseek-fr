@@ -1,201 +1,189 @@
 # 🎙️ Dictaphone DeepSeek FR
 
-Dictée vocale **française, locale et gratuite** pour **DeepSeek**, **DeepSeek Harness** et leurs applications PWA.
-Tu parles → le texte s'écrit tout seul dans le champ de saisie. Rien ne part sur Internet : la reconnaissance tourne sur ta **RTX 4050**.
+**Free, local French voice dictation** for **DeepSeek**, **DeepSeek Harness** and their PWA apps.
+You speak, the text types itself into the input box. Nothing leaves your computer: speech recognition runs locally on your **NVIDIA GPU** with Whisper.
+
+> The dictation language is French. The extension interface and the voice commands are in French too (quoted below with their English meaning).
 
 ```
-   micro  ──►  extension Chrome  ──►  serveur local (Whisper GPU)  ──►  texte dans le composer
-                    (capture)              (transcription)                 (DeepSeek / Harness)
+   mic  ──►  Chrome extension  ──►  local server (Whisper on GPU)  ──►  text in the composer
+                (capture)               (transcription)                  (DeepSeek / Harness)
 ```
 
 ---
 
-## 0. Déjà vérifié sur ta machine
+## 0. What was tested
 
-Tout a été testé de bout en bout sur ta configuration, pas seulement écrit :
+Everything below was tested end to end on a Windows laptop with an RTX 4050 (6 GB), not just written:
 
-| Vérification | Résultat mesuré |
+| Check | Measured result |
 |---|---|
-| GPU utilisé | `cuda` / `float16` — RTX 4050 Laptop, 6 141 Mo |
-| Vitesse | **9,5 s d'audio transcrites en 243 ms → ×39 le temps réel** |
-| Chargement du modèle | 26 s la 1ʳᵉ fois (téléchargement), **1,8 s** ensuite |
-| Découpage aux pauses | partiels en direct puis `FINAL` ~0,9 s après la pause |
-| Phrase française test | *« Bonjour, ceci est un test de dicte vocale en français. Je dicte maintenant dans DeepSeek sans toucher au clavier. »* |
-| Injection dans le composer Harness | ✅ état interne de l'éditeur **Lexical** vérifié |
-| Chaîne complète extension → serveur → composer | ✅ **OK** |
-| Commandes vocales (« Valider », « Stop ») | ✅ testées de bout en bout (envoi réel, arrêt sans envoi) |
-| Correction ajoutée à chaud | ✅ appliquée sans redémarrer le serveur |
-| Popup de l'extension | ✅ rendu, corrections, vocabulaire — aucune erreur JS |
-| Arrêt de la dictée | ✅ 15/15 — Échap, clic, bascule, et **aucun micro fantôme** après une erreur |
-| Démarrage automatique silencieux | ✅ serveur en ligne en 1,6 s, sans doublon |
+| GPU used | `cuda` / `float16`, RTX 4050 Laptop, 6,141 MB |
+| Speed | **9.5 s of audio transcribed in 243 ms, about 39× real time** |
+| Model loading | 26 s the first time (download), **1.8 s** afterwards |
+| Splitting at pauses | live partial text, then `FINAL` about 0.9 s after the pause |
+| Injection into the Harness composer | ✅ internal state of the **Lexical** editor verified |
+| Full chain extension → server → composer | ✅ OK |
+| Voice commands ("Valider", "Stop") | ✅ tested end to end (real send, stop without sending) |
+| Correction added live | ✅ applied without restarting the server |
+| Extension popup | ✅ rendering, corrections, vocabulary, no JS error |
+| Stopping dictation | ✅ 15/15: Esc, click, toggle, and **no ghost microphone** after an error |
+| Silent auto-start | ✅ server online in 1.6 s, no duplicate |
 
-Le seul écart restant est le mot « dictée » écrit « dicte » (accent), typique du modèle `small`.
-Voir § 4 pour passer à `medium` si tu veux corriger ça.
+The only known gap is the French word « dictée » sometimes written « dicte » (missing accent), typical of the `small` model. See §4 to switch to `medium`.
 
 ---
 
-## 1. Prérequis
+## 1. Requirements
 
-| Élément | État |
+| Item | Notes |
 |---|---|
-| Windows + Chrome | ✅ |
-| NVIDIA RTX 4050 (6 Go) + pilote récent | ✅ détecté |
-| Python 3.10+ | ✅ détecté |
-| ~1,8 Go d'espace disque libre | pour CUDA + le modèle Whisper |
+| Windows + Chrome | |
+| NVIDIA GPU (6 GB or more recommended) + recent driver | CPU also works, much slower |
+| Python 3.10+ | |
+| About 1.8 GB of free disk space | for CUDA and the Whisper model |
 
 ---
 
-## 2. Installation (une seule fois, ~5 min)
+## 2. Installation (once, about 5 minutes)
 
-1. Double-clique sur **`install.bat`**.
-   Il crée un environnement Python isolé (`.venv`), installe `faster-whisper` + les bibliothèques CUDA, puis télécharge le modèle `small` (~480 Mo).
+1. Double-click **`install.bat`**.
+   It creates an isolated Python environment (`.venv`), installs `faster-whisper` and the CUDA libraries, then downloads the `small` model (about 480 MB).
 
-2. Installe l'extension dans Chrome :
-   - ouvre `chrome://extensions`
-   - active **Mode développeur** (interrupteur en haut à droite)
-   - clique **Charger l'extension non empaquetée**
-   - choisis le dossier **`dictaphone\extension`**
+2. Install the extension in Chrome:
+   - open `chrome://extensions`
+   - turn on **Developer mode** (top-right switch)
+   - click **Load unpacked**
+   - choose the **`extension`** folder of this project
 
-3. C'est fini. Passe à l'utilisation.
-
----
-
-## 3. Utilisation
-
-1. Double-clique sur **`start.bat`** → une fenêtre noire s'ouvre et affiche `Pret.`
-   *(laisse-la ouverte ; ferme-la pour arrêter le serveur)*
-
-2. Ouvre DeepSeek ou DeepSeek Harness.
-
-3. Place le curseur dans le champ de saisie, puis **`Ctrl + Shift + Espace`**.
-
-4. **Parle normalement.** Le texte s'écrit phrase par phrase, à chaque pause.
-   Un aperçu gris s'affiche en direct pendant que tu parles.
-
-5. **`Ctrl + Shift + Espace`** à nouveau pour arrêter — ou n'importe quand, **`Échap`** annule.
-
-> 💡 Tu peux aussi cliquer sur le **bouton micro flottant** en bas à droite, ou sur l'icône de l'extension dans la barre d'outils.
-> Le bouton est **déplaçable** à la souris.
-
-### Arrêter la dictée
-
-Quatre moyens, tous équivalents :
-
-| Moyen | Quand |
-|---|---|
-| **`Échap`** | Le plus rapide, la page doit avoir le focus |
-| **Clic sur le bouton flottant** | Pendant l'écoute, le micro devient un **carré rouge d'arrêt** |
-| **`Ctrl + Shift + Espace`** | Bascule marche/arrêt |
-| **`Alt + Shift + D`** | Raccourci global de l'extension (`chrome://extensions/shortcuts` pour le changer) |
-
-Pendant l'enregistrement, trois repères te disent que ça tourne : le bouton devient un carré rouge, le libellé affiche **REC — Échap pour arrêter**, et une pastille **REC** apparaît sur l'icône de l'extension.
-
-Deux garde-fous automatiques, réglables dans **Options → Arrêt et sécurité** :
-
-- **Arrêt si tu changes d'onglet** ou minimises la fenêtre (actif par défaut).
-- **Durée maximale** d'une dictée, 5 minutes par défaut — le micro ne peut donc jamais rester ouvert indéfiniment.
-
-### Commandes vocales
-
-Dis le mot **seul**, après une pause, sans rien d'autre dans la phrase :
-
-| Tu dis | Résultat |
-|---|---|
-| « Valider », « Envoyer », « C'est bon », « Vas-y » | **Envoie le message** (touche Entrée) et arrête la dictée |
-| « Stop », « Arrête la dictée », « Termine » | Arrête la dictée **sans** envoyer |
-| « À la ligne », « Nouveau paragraphe » | Insère un retour à la ligne |
-| « Annuler », « Efface », « Oublie » | Annule ce qui vient d'être dicté |
-| « Efface le dernier mot » | Annule le dernier morceau inséré |
-
-La règle du **morceau entier** est ce qui évite les faux positifs : dire « je vais valider le formulaire » n'envoie rien, parce que la commande n'occupe pas tout le morceau (les morceaux sont les segments découpés par tes pauses). Tu peux assouplir cette règle dans les réglages, et changer les mots.
-
-### Où ça marche
-
-| Application | Statut |
-|---|---|
-| DeepSeek Harness — PWA (`DeepSeek Harness.lnk`) | ✅ |
-| DeepSeek — PWA (`DeepSeek.lnk`) | ✅ |
-| chat.deepseek.com dans Chrome | ✅ |
-| http://127.0.0.1:3080 dans Chrome | ✅ |
-
-Le raccourci **`Alt + Shift + D`** (défini dans `chrome://extensions/shortcuts`) fonctionne aussi, y compris au niveau du navigateur.
+3. Done. Move on to usage.
 
 ---
 
-## 3 bis. Démarrage automatique (recommandé)
+## 3. Usage
 
-Pour ne plus jamais avoir à penser à `start.bat` : double-clique sur **`demarrage-auto.bat`** et choisis **`1`**.
+1. Double-click **`start.bat`**. A black window opens and shows `Pret.` (ready). Leave it open; close it to stop the server.
+2. Open DeepSeek or DeepSeek Harness.
+3. Put the cursor in the input box, then press **`Ctrl + Shift + Space`**.
+4. **Speak normally.** Text is written sentence by sentence at each pause, with a grey live preview while you speak.
+5. Press **`Ctrl + Shift + Space`** again to stop, or **`Esc`** at any time to cancel.
 
-Le serveur se lancera alors **tout seul, sans aucune fenêtre**, à chaque ouverture de session Windows — donc il sera déjà prêt quand tu ouvriras DeepSeek ou DeepSeek Harness.
+> 💡 You can also click the **floating microphone button** at the bottom right, or the extension icon in the toolbar. The button can be dragged with the mouse.
+
+### Stopping dictation
+
+Four equivalent ways:
+
+| Way | When |
+|---|---|
+| **`Esc`** | Fastest, the page must have focus |
+| **Click the floating button** | While listening, the microphone becomes a **red stop square** |
+| **`Ctrl + Shift + Space`** | Start/stop toggle |
+| **`Alt + Shift + D`** | Global extension shortcut (change it at `chrome://extensions/shortcuts`) |
+
+While recording, three signs tell you it is running: the button becomes a red square, the label reads **REC — Esc to stop**, and a **REC** badge appears on the extension icon.
+
+Two automatic safeguards, adjustable in **Options → Stop and safety**:
+
+- **Stop when you switch tabs** or minimise the window (on by default).
+- **Maximum duration** of a dictation, 5 minutes by default, so the microphone can never stay open indefinitely.
+
+### Voice commands
+
+Say the word **on its own**, after a pause, with nothing else in the sentence (the commands are French words):
+
+| You say | Result |
+|---|---|
+| « Valider », « Envoyer », « C'est bon », « Vas-y » (confirm, send, OK, go) | **Sends the message** (Enter key) and stops dictation |
+| « Stop », « Arrête la dictée », « Termine » (stop, finish) | Stops dictation **without** sending |
+| « À la ligne », « Nouveau paragraphe » (new line, new paragraph) | Inserts a line break |
+| « Annuler », « Efface », « Oublie » (undo, erase, forget) | Cancels what was just dictated |
+| « Efface le dernier mot » (erase the last word) | Undoes the last inserted chunk |
+
+The **whole-chunk rule** prevents false positives: saying « je vais valider le formulaire » ("I'm going to validate the form") sends nothing, because the command does not fill the whole chunk (chunks are the segments cut at your pauses). You can loosen this rule and change the words in the settings.
+
+### Where it works
+
+| Application | Status |
+|---|---|
+| DeepSeek Harness (PWA) | ✅ |
+| DeepSeek (PWA) | ✅ |
+| chat.deepseek.com in Chrome | ✅ |
+| http://127.0.0.1:3080 in Chrome | ✅ |
+
+---
+
+## 3 bis. Automatic start (recommended)
+
+Never think about `start.bat` again: double-click **`demarrage-auto.bat`** and choose **`1`**.
+
+The server then starts **by itself, with no window**, each time you log in to Windows, so it is ready when you open DeepSeek.
 
 | | |
 |---|---|
-| Coût quand tu ne dictes pas | ~60 Mo de RAM, **0 Mo de VRAM** |
-| Première dictée après le démarrage | ~2 s de chargement du modèle, une seule fois |
-| Journal | `logs\serveur.log` |
-| Pour désactiver | relance `demarrage-auto.bat` → `2` |
-| Pour voir l'état | relance `demarrage-auto.bat` → `3` |
+| Cost when you are not dictating | about 60 MB of RAM, **0 MB of VRAM** |
+| First dictation after startup | about 2 s to load the model, once |
+| Log | `logs\serveur.log` |
+| Turn off | run `demarrage-auto.bat` again → `2` |
+| Check status | run `demarrage-auto.bat` again → `3` |
 
-Le modèle n'est **pas** préchargé au démarrage : c'est volontaire, pour ne pas immobiliser 0,8 Go de VRAM en permanence sur ta carte 6 Go. Si tu préfères qu'il soit chaud dès le début (au prix de la VRAM réservée), passe `"preload": true` dans `config.json`.
+The model is **not** preloaded at startup, on purpose, so it does not hold 0.8 GB of VRAM all the time. If you prefer it warm from the start, set `"preload": true` in `config.json`.
 
-`start.bat` reste utile pour voir les messages en direct, changer de modèle en ligne de commande, ou dicter sans attendre le prochain démarrage de session.
+`start.bat` stays useful to see live messages, change model from the command line, or dictate without waiting for the next login.
 
 ---
 
-## 4. Réglages
+## 4. Settings
 
-Clic droit sur l'icône de l'extension → **Options**, ou `chrome://extensions` → *Détails* → *Options de l'extension*.
+Right-click the extension icon → **Options**, or `chrome://extensions` → *Details* → *Extension options*.
 
-- **Langue** — français par défaut. Force `fr` pour de meilleurs résultats (ne laisse pas « détection auto » si tu dictes surtout en français).
-- **Modèle Whisper** — voir le tableau ci-dessous.
-- **Raccourci clavier** — n'importe quelle combinaison, ex. `Ctrl+Shift+Space`, `Alt+D`, `F9`.
-- **Écrire directement dans le champ de saisie** — décoche pour copier dans le presse-papier à la place.
-- **Aperçu en direct** — la bulle grise pendant que tu parles.
-- **Position** — ou fais simplement glisser le bouton micro.
+- **Language**: French by default. Force `fr` for the best results (avoid "auto-detect" if you mostly dictate in French).
+- **Whisper model**: see the table below.
+- **Keyboard shortcut**: any combination, e.g. `Ctrl+Shift+Space`, `Alt+D`, `F9`.
+- **Write directly into the input box**: untick to copy to the clipboard instead.
+- **Live preview**: the grey bubble while you speak.
+- **Position**: or simply drag the microphone button.
 
-### Quel modèle choisir ?
+### Which model?
 
-| Modèle | Taille | VRAM | Français | Vitesse (4050) |
+| Model | Size | VRAM | French quality | Speed (RTX 4050) |
 |---|---|---|---|---|
-| `tiny` | 75 Mo | ~0,3 Go | ⭐ | instantané |
-| `base` | 145 Mo | ~0,4 Go | ⭐⭐ | instantané |
-| **`small`** *(défaut)* | 480 Mo | ~0,8 Go | ⭐⭐⭐ | ~15× le temps réel |
-| `medium` | 1,5 Go | ~1,8 Go | ⭐⭐⭐⭐ | ~6× le temps réel |
-| `large-v3-turbo` | 1,6 Go | ~2,0 Go | ⭐⭐⭐⭐⭐ | ~8× le temps réel |
+| `tiny` | 75 MB | ~0.3 GB | ⭐ | instant |
+| `base` | 145 MB | ~0.4 GB | ⭐⭐ | instant |
+| **`small`** *(default)* | 480 MB | ~0.8 GB | ⭐⭐⭐ | ~15× real time |
+| `medium` | 1.5 GB | ~1.8 GB | ⭐⭐⭐⭐ | ~6× real time |
+| `large-v3-turbo` | 1.6 GB | ~2.0 GB | ⭐⭐⭐⭐⭐ | ~8× real time |
 
-Avec 6 Go de VRAM, **`medium`** passe sans problème et est nettement meilleur en français.
-Pour changer : Options → Modèle → *Enregistrer* (le serveur le charge à chaud).
+With 6 GB of VRAM, **`medium`** fits easily and is clearly better in French.
+To change: Options → Model → *Save* (the server loads it live).
 
-En ligne de commande :
+From the command line:
 
 ```bat
 start.bat --model medium
 start.bat --model large-v3-turbo
-start.bat --cpu                  REM sans GPU (beaucoup plus lent)
+start.bat --cpu                  REM no GPU (much slower)
 ```
 
 ---
 
-## 4 bis. Améliorer la reconnaissance de tes mots
+## 4 bis. Improving recognition of your words
 
-Tout se règle dans `config.json`, puis relance `start.bat`.
+Everything is set in `config.json`, then restart `start.bat`.
 
-### 1. Le vocabulaire (le plus efficace)
+### 1. Vocabulary (most effective)
 
-Whisper est **fortement influencé** par ce texte : les mots que tu y mets sont reconnus
-en priorité. C'est ce qui fait qu'il écrit « DeepSeek » et non « Dipsy et que ».
+Whisper is **strongly influenced** by this text: the words you put there are recognised first. This is why it writes "DeepSeek" rather than "Dipsy et que".
 
 ```json
 "vocabulary": "DeepSeek, DeepSeek Harness, Claude Code, ChatGPT, WebSocket, FastAPI, Python, Whisper, Chrome, Windows, API, extension."
 ```
 
-Ajoute-y tes noms de projets, de clients, tes termes métier… sans jamais dépasser ~40 mots
-(au-delà, l'effet se dilue). Évite les mots courants isolés et les étiquettes du genre
-« Vocabulaire : » : Whisper peut les recracher dans un passage silencieux.
+Add your project names, client names and technical terms, but never go beyond about 40 words (the effect fades). Avoid isolated common words and labels like "Vocabulary:", which Whisper may echo back during a silent passage.
 
-### 2. Les remplacements (le filet de sécurité)
+### 2. Replacements (the safety net)
 
-Pour corriger des formes que le modèle produit quand même :
+To fix forms the model still produces:
 
 ```json
 "cleanup": {
@@ -206,156 +194,141 @@ Pour corriger des formes que le modèle produit quand même :
 }
 ```
 
-### 4. Directement depuis le bouton de l'extension
+### 3. From the extension button
 
-Le clic sur l'icône ouvre un **popup** : état du serveur, bouton *Dicter dans cet onglet*, ajout de correction en deux champs, et ton vocabulaire.
+Clicking the icon opens a **popup**: server status, a *Dictate in this tab* button, a two-field correction form and your vocabulary.
 
-Tout ce que tu y saisis (comme dans la page de réglages) prend effet **à la dictée suivante, sans redémarrer le serveur**.
+Anything you enter there (as in the settings page) takes effect **on the next dictation, without restarting the server**.
 
-Dans la page, un **bouton engrenage** est placé juste à gauche du micro : il ouvre directement les réglages. C'est le chemin le plus court quand tu es en train de dicter.
+On the page, a **gear button** sits just left of the microphone and opens the settings directly, the shortest path while you are dictating.
 
-### 5. Depuis le bureau
-
-Deux raccourcis sont posés sur ton bureau :
-
-| Raccourci | Effet |
-|---|---|
-| **Dictaphone FR** | Ouvre le dossier du projet |
-| **Dictaphone FR — réglages** | Démarre le serveur si besoin, puis ouvre les réglages de l'extension |
-
-Une précision utile : **Chrome interdit d'ouvrir une URL `chrome://` ou `chrome-extension://` depuis un raccourci Windows** — elle est remplacée par un nouvel onglet. Le raccourci « réglages » passe donc par une page locale (`http://127.0.0.1:8765/reglages`) qui demande à l'extension de s'ouvrir elle-même. C'est le seul chemin qui fonctionne.
-
-### 6. Les pauses
+### 4. Pauses
 
 ```json
 "silence_ms": 700,
 ```
-Durée de silence qui déclenche l'écriture du morceau. Baisse à `450` pour un rythme plus
-nerveux, monte à `1000` si tu fais de longues pauses au milieu de tes phrases.
+Length of silence that triggers writing a chunk. Lower it to `450` for a snappier rhythm, raise it to `1000` if you pause mid-sentence.
 
 ---
 
-## 5. Dépannage
+## 5. Troubleshooting
 
-| Symptôme | Solution |
+| Symptom | Fix |
 |---|---|
-| **« Impossible de joindre le serveur de dictée »** | `start.bat` n'est pas lancé. Double-clique dessus et attends `Pret.` |
-| **Le micro ne s'active pas** | Clique sur l'icône 🔒 / micro dans la barre d'adresse et autorise le microphone pour le site. |
-| **Rien ne s'écrit** | Vérifie que le curseur est bien dans le champ de saisie. Sinon le texte est copié dans le presse-papier (Ctrl+V). |
-| **C'est lent / ça rame** | Vérifie le GPU : ouvre <http://127.0.0.1:8765/health> → `"device": "cuda"`. Si c'est `cpu`, réinstalle avec `install.bat`. |
-| **Erreurs d'accents / de mots** | Normal avec le modèle `small`. Passe à `medium` ou `large-v3-turbo` dans les options. |
-| **Un mot technique est mal reconnu** | Voir § 4 bis ci-dessous. |
-| **« Le moteur n'a pas pu être chargé »** | Relance `install.bat`. Vérifie que le pilote NVIDIA est à jour. |
-| **Le micro reste bloqué** | `Échap`, puis clic sur le bouton flottant. Vérifie `document.getElementById("dsd-dictaphone-host").dataset.dsdMic` dans la console (F12) : il doit valoir `0` au repos. Sinon recharge la page (`F5`) — et signale-le. |
-| **La dictée ne s'arrête pas quand je change d'onglet** | Options → Arrêt et sécurité → active « Arrêter si je change d'onglet ». |
-| **L'arrêt par `Échap` ne marche pas** | La page doit avoir le focus. Sinon utilise `Alt + Shift + D`, qui fonctionne tant que la fenêtre Chrome est active. |
+| **"Impossible de joindre le serveur de dictée"** (cannot reach the dictation server) | `start.bat` is not running. Double-click it and wait for `Pret.` |
+| **The microphone does not start** | Click the 🔒 / microphone icon in the address bar and allow the microphone for the site. |
+| **Nothing is typed** | Check that the cursor is in the input box. Otherwise the text is copied to the clipboard (Ctrl+V). |
+| **Slow** | Check the GPU: open <http://127.0.0.1:8765/health> → `"device": "cuda"`. If it says `cpu`, reinstall with `install.bat`. |
+| **Accent or word errors** | Normal with the `small` model. Switch to `medium` or `large-v3-turbo` in the options. |
+| **A technical word is misrecognised** | See §4 bis. |
+| **"Le moteur n'a pas pu être chargé"** (engine could not be loaded) | Run `install.bat` again. Make sure the NVIDIA driver is up to date. |
+| **The microphone stays stuck** | `Esc`, then click the floating button. In the console (F12) check `document.getElementById("dsd-dictaphone-host").dataset.dsdMic`: it must be `0` at rest. Otherwise reload the page (`F5`) and report it. |
+| **Dictation does not stop when I change tab** | Options → Stop and safety → enable "Stop if I change tab". |
+| **`Esc` does not stop it** | The page must have focus. Otherwise use `Alt + Shift + D`, which works while the Chrome window is active. |
 
-Vérifie l'état du moteur à tout moment : <http://127.0.0.1:8765/health>
+Check the engine at any time: <http://127.0.0.1:8765/health>
 
 ---
 
-## 6. Page de test
+## 6. Test pages and scripts
 
-Sans extension, ouvre <http://127.0.0.1:8765> : une page permet de tester le micro et la transcription directement dans le navigateur. Pratique pour isoler un problème (micro vs extension vs serveur).
+Without the extension, open <http://127.0.0.1:8765>: a page lets you test the microphone and transcription directly in the browser. Handy to isolate a problem (microphone vs extension vs server).
 
-Et <http://127.0.0.1:8765/extension-test> simule le champ de saisie de DeepSeek : le texte dicté y arrive, mais **rien n'est envoyé à DeepSeek**. La page compte les envois, les annulations et les morceaux insérés — idéal pour vérifier les commandes vocales sans rien déclencher de réel.
+<http://127.0.0.1:8765/extension-test> simulates the DeepSeek input box: dictated text arrives there, but **nothing is sent to DeepSeek**. The page counts sends, cancellations and inserted chunks, ideal to check voice commands without triggering anything real.
 
-### Scripts de diagnostic
+### Diagnostic scripts
 
 ```bat
-REM Verifie le GPU, le VAD et transcrit tests\test-fr.wav
+REM Checks the GPU, the VAD and transcribes tests\test-fr.wav
 .venv\Scripts\python.exe tests\selftest.py small tests\test-fr.wav
 
-REM Rejoue un WAV a travers le WebSocket, comme le fait le microphone
+REM Replays a WAV through the WebSocket, like the microphone does
 .venv\Scripts\python.exe tests\streamtest.py tests\test-fr.wav
 
-REM Verifie les commandes vocales et le nettoyage (sans micro)
+REM Checks voice commands and cleanup (no microphone)
 .venv\Scripts\python.exe outils\test-commandes.py
 
-REM Verifie que le serveur repond
+REM Checks that the server responds
 tests\tester.bat
 ```
 
-Les fichiers de test (`test-fr.wav`, `test-commande-envoi.wav`, `test-commande-stop.wav`) vivent
-dans **`tests\`**. `test-fr.wav` est un échantillon en français fourni avec le projet (voix de synthèse Windows).
-`test-commande-envoi.wav` et `test-commande-stop.wav` contiennent une phrase puis un mot de commande, avec la pause necessaire.
+The test files (`test-fr.wav`, `test-commande-envoi.wav`, `test-commande-stop.wav`) live in **`tests\`**. `test-fr.wav` is a French sample (Windows synthetic voice). The two command files contain a sentence followed by a command word, with the required pause.
 
-Le dossier **`dev/`** contient les scripts qui ont servi à valider l'extension sans clic manuel
-(Chrome isolé piloté via le protocole DevTools, avec un WAV branché en faux microphone) :
+The **`dev/`** folder holds the scripts used to validate the extension without manual clicks (an isolated Chrome driven through the DevTools protocol, with a WAV plugged in as a fake microphone):
 
 ```bash
-node dev/cdp-test.mjs            # injection dans le composer Lexical du Harness
-node dev/ext-test.mjs extension  # chaine complete, de bout en bout
-node dev/popup-test.mjs          # popup : rendu, corrections, vocabulaire
-node dev/arret-test.mjs          # demarrage / arret / micro fantome (15 verifications)
-node dev/verif-raccourci.mjs     # ouverture des reglages depuis le raccourci
+node dev/cdp-test.mjs            # injection into the Harness Lexical composer
+node dev/ext-test.mjs extension  # full chain, end to end
+node dev/popup-test.mjs          # popup: rendering, corrections, vocabulary
+node dev/arret-test.mjs          # start / stop / ghost microphone (15 checks)
+node dev/verif-raccourci.mjs     # opening the settings from the shortcut
 
-# variantes (voir le haut de ext-test.mjs)
+# variants (see the top of ext-test.mjs)
 $env:TARGET="http://127.0.0.1:8765/extension-test"
 $env:EXPECT="submit"             # text | submit | stop
 $env:PRESET='{"replacements":{"bonjour":"SALUT"}}'
 ```
 
-### Vérifier que le micro est bien relâché
+### Checking that the microphone is released
 
-L'extension publie son état interne sur son élément hôte, ce qui permet de diagnostiquer
-sans outil particulier. Dans la console du navigateur (F12) sur une page DeepSeek :
+The extension publishes its internal state on its host element, so you can diagnose without special tools. In the browser console (F12) on a DeepSeek page:
 
 ```js
 const h = document.getElementById("dsd-dictaphone-host");
 h.dataset.dsdState   // "idle" | "starting" | "listening" | "stopping"
-h.dataset.dsdMic     // nombre de captures micro actuellement retenues — doit valoir 0 au repos
-h.dataset.dsdOpened  // total de captures ouvertes depuis le chargement de la page
+h.dataset.dsdMic     // number of microphone captures currently held, must be 0 at rest
+h.dataset.dsdOpened  // total captures opened since the page loaded
 ```
 
-Si `dsdMic` ne revient pas à `0` après un arrêt, c'est un bug : signale-le.
+If `dsdMic` does not return to `0` after a stop, that is a bug: please report it.
 
 ---
 
-## 7. Fichiers
+## 7. Files
 
+```
 dictaphone/
-├── README.md                            Ce fichier
-├── install.bat                          Installation (une fois)
-├── demarrage-auto.bat                   Activer le démarrage à l'ouverture de session
-├── demarrer-serveur-silencieux.vbs      Lancement sans fenêtre (appelé au démarrage)
-├── start.bat                            Démarre le serveur avec sa console
-├── config.json                          Réglages, vocabulaire, commandes, remplacements
+├── README.md                            This file
+├── install.bat                          Installation (once)
+├── demarrage-auto.bat                   Enable start at Windows login
+├── demarrer-serveur-silencieux.vbs      Windowless launch (called at login)
+├── start.bat                            Starts the server with its console
+├── config.json                          Settings, vocabulary, commands, replacements
 ├── requirements.txt
 ├── logs/
-│   └── serveur.log                      Journal du serveur silencieux
+│   └── serveur.log                      Silent-server log
 ├── tests/
-│   ├── tester.bat                       Vérifie que le serveur répond
-│   ├── selftest.py                      Test GPU / VAD / transcription
-│   ├── streamtest.py                    Test du flux temps réel (WebSocket)
-│   ├── test-fr.wav                      Échantillon audio français pour les tests
-│   ├── test-commande-envoi.wav          Phrase + « Valider » (test des commandes)
-│   └── test-commande-stop.wav           Phrase + « Arrête la dictée »
+│   ├── tester.bat                       Checks that the server responds
+│   ├── selftest.py                      GPU / VAD / transcription test
+│   ├── streamtest.py                    Real-time stream (WebSocket) test
+│   ├── test-fr.wav                      French audio sample for tests
+│   ├── test-commande-envoi.wav          Sentence + "Valider" (command test)
+│   └── test-commande-stop.wav           Sentence + "Arrête la dictée"
 ├── outils/
-│   ├── demarrage-auto.ps1               Active / désactive le démarrage auto
-│   ├── ouvrir-reglages.vbs              Raccourci bureau → réglages de l'extension
-│   ├── dictaphone.ico                   Icône des raccourcis
-│   ├── test-commandes.py                Test des commandes vocales, sans micro
-│   └── assembler-wav.py                 Fabrique les WAV de test (phrase + pause)
+│   ├── demarrage-auto.ps1               Enables / disables auto-start
+│   ├── ouvrir-reglages.vbs              Desktop shortcut → extension settings
+│   ├── dictaphone.ico                   Shortcut icon
+│   ├── test-commandes.py                Voice-command test, no microphone
+│   └── assembler-wav.py                 Builds the test WAVs (sentence + pause)
 ├── server/
-│   ├── app.py                           Serveur HTTP + WebSocket
-│   ├── stt.py                           Chargement Whisper / CUDA / VAD
-│   ├── commands.py                      Commandes vocales (normalisation, détection)
-│   ├── cleanup.py                       Ponctuation, majuscules, remplacements, typo FR
-│   ├── webui.html                       Page de test micro
-│   ├── testpage.html                    Page de diagnostic de l'extension
-│   ├── reglages.html                    Point d'entrée des réglages depuis le bureau
+│   ├── app.py                           HTTP + WebSocket server
+│   ├── stt.py                           Whisper / CUDA / VAD loading
+│   ├── commands.py                      Voice commands (normalisation, detection)
+│   ├── cleanup.py                       Punctuation, capitals, replacements, French typography
+│   ├── webui.html                       Microphone test page
+│   ├── testpage.html                    Extension diagnostic page
+│   ├── reglages.html                    Entry point for settings from the desktop
 │   └── worklet.js
-├── extension/                           ← à charger dans chrome://extensions
+├── extension/                           ← load this in chrome://extensions
 │   ├── manifest.json
-│   ├── background.js                    Connexion WebSocket + ouverture des réglages
-│   ├── content.js                       Bouton micro, engrenage, écriture, commandes
-│   ├── popup.html/.js                   Options rapides (icône de la barre d'outils)
-│   ├── options.html/.js                 Réglages complets
-│   ├── pcm-worklet.js                   Capture audio 16 kHz par blocs de 128 ms
+│   ├── background.js                    WebSocket connection + opening the settings
+│   ├── content.js                       Microphone button, gear, writing, commands
+│   ├── popup.html/.js                   Quick options (toolbar icon)
+│   ├── options.html/.js                 Full settings
+│   ├── pcm-worklet.js                   16 kHz audio capture in 128 ms blocks
 │   └── icons/
-└── dev/                                 Outils de validation automatisée
-    ├── arret-test.mjs                   Démarrage / arrêt / micro fantôme
+└── dev/                                 Automated validation tools
+    ├── arret-test.mjs                   Start / stop / ghost microphone
     ├── cdp-test.mjs
     ├── ext-test.mjs
     ├── popup-test.mjs
@@ -364,53 +337,52 @@ dictaphone/
 
 ---
 
-## 8. Confidentialité & performances
+## 8. Privacy and performance
 
-- **Aucune donnée ne sort de ton PC.** Le serveur écoute uniquement sur `127.0.0.1` et le modèle tourne en local.
-- L'audio est envoyé en PCM brut 16 kHz au serveur local via WebSocket (~256 kbit/s), jamais à un service tiers.
-- Le texte est découpé **automatiquement aux pauses** (~0,7 s de silence) : tu vois les phrases apparaître au fur et à mesure, et la latence perçue reste sous la seconde.
-- Le modèle reste chargé en VRAM entre deux dictées, donc aucune attente au deuxième usage.
-
----
-
-## 9. Sous le capot
-
-- **`faster-whisper`** (CTranslate2) — même qualité que Whisper d'OpenAI, 4 à 8× plus rapide, `float16` sur CUDA.
-- **VAD Silero** (embarqué) — détecte la parole et les silences pour découper sans couper les mots.
-- **`initial_prompt` glissant** — le texte déjà écrit est donné au modèle comme contexte, ce qui garde la ponctuation et le vocabulaire cohérents d'une phrase à l'autre.
-- **Post-traitement local** (`cleanup.py`) — supprime les « euh », remet les majuscules, corrige les espaces avant ponctuation, applique ton dictionnaire maison. Aucun appel réseau.
-- **Insertion navigateur** — le composer de DeepSeek Harness est un éditeur **Lexical** (`contenteditable`) ; le texte est inséré via `execCommand('insertText')`, que Lexical écoute nativement, avec repli sur `textarea`/`input` classiques.
+- **No data leaves your PC.** The server listens only on `127.0.0.1` and the model runs locally.
+- Audio is sent as raw 16 kHz PCM to the local server over WebSocket (about 256 kbit/s), never to a third-party service.
+- Text is split **automatically at pauses** (about 0.7 s of silence): you see sentences appear as you go, and perceived latency stays under a second.
+- The model stays loaded in VRAM between dictations, so there is no wait on the second use.
 
 ---
 
-## 10. API du serveur
+## 9. Under the hood
 
-Utile si tu veux brancher autre chose dessus.
+- **`faster-whisper`** (CTranslate2): same quality as OpenAI's Whisper, 4 to 8× faster, `float16` on CUDA.
+- **Silero VAD** (bundled): detects speech and silence to cut without chopping words.
+- **Sliding `initial_prompt`**: the text already written is given to the model as context, which keeps punctuation and vocabulary consistent from one sentence to the next.
+- **Local post-processing** (`cleanup.py`): removes "euh" fillers, restores capitals, fixes spaces before punctuation, applies your custom dictionary. No network call.
+- **Browser insertion**: the DeepSeek Harness composer is a **Lexical** (`contenteditable`) editor; text is inserted with `execCommand('insertText')`, which Lexical listens to natively, with a fallback to plain `textarea` / `input`.
+
+---
+
+## 10. Server API
+
+Useful if you want to plug something else into it.
 
 | Route | Description |
 |---|---|
-| `GET /health` | état du moteur (modèle, device, VRAM, latence) |
-| `GET /config` | configuration courante |
-| `POST /model?name=medium` | change de modèle à chaud |
-| `POST /transcribe` | corps = PCM16 LE mono 16 kHz → `{"text": "..."}` |
-| `WS /ws` | binaire = PCM, texte = JSON (`start`, `stop`, `reset`) |
+| `GET /health` | engine status (model, device, VRAM, latency) |
+| `GET /config` | current configuration |
+| `POST /model?name=medium` | switches model live |
+| `POST /transcribe` | body = PCM16 LE mono 16 kHz → `{"text": "..."}` |
+| `WS /ws` | binary = PCM, text = JSON (`start`, `stop`, `reset`) |
 
-Exemple :
+Example:
 
 ```bash
 curl -X POST --data-binary @phrase.pcm "http://127.0.0.1:8765/transcribe?language=fr"
 ```
 
-
 ---
 
-## Annexe — Mettre le projet sur une autre machine
+## Appendix: setting the project up on another machine
 
-Ces fichiers sont volontairement **absents du dépôt** (ils sont propres à chaque machine) :
+These files are deliberately **absent from the repository** (they are specific to each machine):
 
-| Fichier | Pourquoi | Que faire |
+| File | Why | What to do |
 |---|---|---|
-| `.venv/` | environnement Python (2 Go) | lancer `install.bat` |
-| `native/key.pem` | clé privée de signature de l'extension (**secret**) | n'en as besoin que pour empaqueter un `.crx` ; Chrome peut aussi charger l'extension « non empaquetée » |
-| `native/com.dictaphone.launcher.json` | contient un chemin absolu | copier `native/com.dictaphone.launcher.example.json`, y mettre le vrai chemin de `host.bat` et l'identifiant de l'extension affiché sur `chrome://extensions` |
-| `tests/*.wav` | enregistrements de test de la voix de l'auteur | enregistrer ses propres fichiers (voir `outils/assembler-wav.py`) |
+| `.venv/` | Python environment (2 GB) | run `install.bat` |
+| `native/key.pem` | private signing key of the extension (**secret**) | only needed to package a `.crx`; Chrome can also load the extension unpacked |
+| `native/com.dictaphone.launcher.json` | contains an absolute path | copy `native/com.dictaphone.launcher.example.json`, put the real path of `host.bat` and the extension ID shown at `chrome://extensions` |
+| `tests/*.wav` | test recordings | record your own files (see `outils/assembler-wav.py`) |
