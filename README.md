@@ -47,6 +47,17 @@ The only known gap is the French word « dictée » sometimes written « dicte �
 
 ## 2. Installation (once, about 5 minutes)
 
+### Easiest: the installer
+
+1. Download **`Dictaphone-Setup.exe`** from the [latest release](https://github.com/Paquereauman/dictaphone-deepseek-fr/releases/latest) and run it. No administrator rights needed.
+2. It installs Python if you do not have it, sets up everything, downloads the speech model and starts the server (also at every Windows login, with no window).
+3. At the end, Chrome opens on `chrome://extensions` and Explorer shows the `extension` folder: switch on **Developer mode**, click **Load unpacked**, pick that folder. Done.
+
+> Windows may show a "Windows protected your PC" warning because the installer is not code-signed: click **More info → Run anyway**.
+> Chrome does not allow a `.crx` file dragged in from outside the Chrome Web Store, so loading the folder once is the only manual step.
+
+### Manual installation
+
 1. Double-click **`install.bat`**.
    It creates an isolated Python environment (`.venv`), installs `faster-whisper` and the CUDA libraries, then downloads the `small` model (about 480 MB).
 

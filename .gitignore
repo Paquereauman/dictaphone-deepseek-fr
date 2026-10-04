@@ -16,3 +16,5 @@ native/com.dictaphone.launcher.json
 
 # Enregistrements de test (ta voix)
 *.wav
+Dictaphone-Setup.exe
+dictaphone-extension.zip
