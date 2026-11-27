@@ -258,14 +258,19 @@ class SttEngine:
                 try:
                     log.info("Chargement du modele '%s' (%s / %s)...", model, dev, ctype)
                     t0 = time.perf_counter()
-                    self._model = WhisperModel(
-                        model,
+                    opts = dict(
                         device=dev,
                         compute_type=ctype,
                         download_root=self._download_root,
                         num_workers=1,
                         cpu_threads=max(4, (os.cpu_count() or 4) // 2),
                     )
+                    try:
+                        # Modele deja telecharge : on evite l'aller-retour vers
+                        # huggingface.co (~2 s a chaque chargement, et 100 % local).
+                        self._model = WhisperModel(model, local_files_only=True, **opts)
+                    except Exception:
+                        self._model = WhisperModel(model, **opts)  # 1re fois : telechargement
                     elapsed = time.perf_counter() - t0
                     self._key = (model, dev, ctype)
                     self._desired = (model, dev, ctype)
@@ -284,6 +289,21 @@ class SttEngine:
 
             self.info.loaded = False
             raise RuntimeError(f"Impossible de charger le modele {model}: {last_exc}")
+
+    def unload(self) -> bool:
+        """Libere le modele (et la VRAM). Rechargé automatiquement au prochain usage."""
+        with self._lock:
+            if self._model is None:
+                return False
+            self._model = None
+            self._key = None
+            self.info.loaded = False
+            self.info.device = "-"
+            self.info.compute_type = "-"
+        import gc
+        gc.collect()
+        log.info("Modele decharge (VRAM liberee).")
+        return True
 
     def _warmup(self) -> None:
         """Force l'allocation des buffers CUDA (evite le lag au 1er mot)."""

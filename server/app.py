@@ -7,6 +7,7 @@ API :
     GET  /                    page de test (micro dans le navigateur)
     GET  /health              etat du moteur (modele, GPU, VRAM, latence)
     GET  /config              configuration courante
+    POST /warmup              charge le modele en arriere-plan (onglet ouvert)
     POST /model?name=medium   change de modele a chaud
     POST /transcribe          corps = PCM16 LE mono 16 kHz -> {"text": ...}
     WS   /ws                  dictee temps reel (binaire = PCM, texte = JSON)
@@ -55,6 +56,15 @@ log = logging.getLogger("dictaphone")
 #: l'audio arrive vraiment depuis l'extension).
 STATS: dict[str, int] = {"frames": 0, "audio_bytes": 0, "finalized": 0}
 
+#: Derniere activite (audio recu ou demande de prechargement) : sert a liberer
+#: la VRAM quand on ne dicte plus.
+LAST_ACTIVITY: float = time.time()
+
+
+def touch() -> None:
+    global LAST_ACTIVITY
+    LAST_ACTIVITY = time.time()
+
 DEFAULTS: dict[str, Any] = {
     "host": "127.0.0.1",
     "port": 8765,
@@ -70,6 +80,7 @@ DEFAULTS: dict[str, Any] = {
     "partial_interval_ms": 800,
     "preload": True,
     "warmup": True,
+    "idle_unload_min": 0,
     "vocabulary": "",
     "voice_commands": {},
     "cleanup": {"enabled": True, "capitalize": True, "remove_fillers": True,
@@ -135,6 +146,7 @@ class StreamSession:
         if pcm.size == 0:
             return
         STATS["frames"] += 1
+        touch()
         STATS["audio_bytes"] += len(pcm_bytes)
         self._pending.append(pcm.astype(np.float32) / 32768.0)
 
@@ -374,12 +386,43 @@ async def _lifespan(app: FastAPI):
     else:
         # Demarrage a l'ouverture de session : on ne reserve PAS la VRAM tant
         # que l'utilisateur n'a pas dicte (le modele se charge a la demande).
-        log.info("  Chargement paresseux : '%s' sera charge a la premiere dictee (~2 s).", cfg["model"])
-        log.info("  0 Mo de VRAM utilisee tant que tu ne dictes pas.")
+        log.info("  Chargement a la demande : '%s' sera charge des l'ouverture de", cfg["model"])
+        log.info("  DeepSeek / Doubao (extension) ou au premier appui sur le micro.")
         log.info("  Pret. Ouvre l'extension Chrome et clique sur le micro.")
+    idle_min = float(cfg.get("idle_unload_min") or 0)
+    if idle_min > 0:
+        log.info("  Le modele sera libere apres %g min sans dictee.", idle_min)
     log.info("=" * 68)
+    watcher = asyncio.create_task(_idle_unloader(idle_min)) if idle_min > 0 else None
     yield
+    if watcher:
+        watcher.cancel()
     log.info("Arret du serveur.")
+
+
+_LOADING: asyncio.Task | None = None
+
+
+def start_loading() -> bool:
+    """Lance le chargement du modele en arriere-plan s'il n'est pas deja la."""
+    global _LOADING
+    touch()
+    if ENGINE.info.loaded or (_LOADING and not _LOADING.done()):
+        return False
+    _LOADING = asyncio.create_task(asyncio.to_thread(ENGINE.ensure))
+    return True
+
+
+async def _idle_unloader(idle_min: float) -> None:
+    """Libere la VRAM apres `idle_min` minutes sans audio ni prechargement."""
+    while True:
+        await asyncio.sleep(min(30.0, max(1.0, idle_min * 30)))
+        try:
+            busy = _LOADING is not None and not _LOADING.done()
+            if ENGINE.info.loaded and not busy and time.time() - LAST_ACTIVITY > idle_min * 60:
+                await asyncio.to_thread(ENGINE.unload)
+        except Exception as exc:  # pragma: no cover
+            log.warning("dechargement: %s", exc)
 
 
 app = FastAPI(title="Dictaphone FR", version="1.0.0", lifespan=_lifespan)
@@ -451,6 +494,14 @@ async def health():
     }
 
 
+@app.post("/warmup")
+async def warmup():
+    """Appele par l'extension a l'ouverture de DeepSeek / Doubao : le modele est
+    pret avant le premier appui sur le micro."""
+    started = start_loading()
+    return {"ok": True, "loaded": ENGINE.info.loaded, "loading": started or not ENGINE.info.loaded}
+
+
 @app.get("/config")
 async def get_config():
     return CONFIG
@@ -498,6 +549,12 @@ async def ws_stream(ws: WebSocket):
             await ws.send_json(payload)
         except Exception:
             pass
+
+    # Chargement paresseux : on charge le modele des l'appui sur le micro,
+    # pendant que l'utilisateur commence a parler, plutot qu'au premier
+    # morceau de parole (ce qui ajoutait tout le temps de chargement au
+    # premier texte).
+    start_loading()
 
     session = StreamSession(ENGINE, cfg, send)
     task = asyncio.create_task(session.run())

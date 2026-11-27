@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Dictaphone DeepSeek FR — local & GPU",
-  "version": "1.0.0",
-  "description": "Dictée vocale française 100 % locale (Whisper sur GPU) pour DeepSeek, DeepSeek Harness et leurs applications PWA.",
+  "version": "1.1.0",
+  "description": "Dictée vocale française 100 % locale (Whisper sur GPU) pour DeepSeek, DeepSeek Harness, Doubao et leurs applications PWA.",
   "minimum_chrome_version": "116",
 
   "permissions": ["storage", "tabs", "nativeMessaging"],
@@ -10,7 +10,8 @@
     "http://127.0.0.1/*",
     "http://localhost/*",
     "https://chat.deepseek.com/*",
-    "https://*.deepseek.com/*"
+    "https://*.deepseek.com/*",
+    "https://www.doubao.com/*"
   ],
 
   "background": { "service_worker": "background.js" },
@@ -21,7 +22,8 @@
         "http://127.0.0.1/*",
         "http://localhost/*",
         "https://chat.deepseek.com/*",
-        "https://*.deepseek.com/*"
+        "https://*.deepseek.com/*",
+        "https://www.doubao.com/*"
       ],
       "js": ["content.js"],
       "css": ["content.css"],
@@ -37,7 +39,8 @@
         "http://127.0.0.1/*",
         "http://localhost/*",
         "https://chat.deepseek.com/*",
-        "https://*.deepseek.com/*"
+        "https://*.deepseek.com/*",
+        "https://www.doubao.com/*"
       ]
     }
   ],

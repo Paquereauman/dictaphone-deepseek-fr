@@ -1,6 +1,6 @@
 # 🎙️ Dictaphone DeepSeek FR
 
-**Free, local French voice dictation** for **DeepSeek**, **DeepSeek Harness** and their PWA apps.
+**Free, local French voice dictation** for **DeepSeek**, **DeepSeek Harness**, **Doubao** and their PWA apps.
 You speak, the text types itself into the input box. Nothing leaves your computer: speech recognition runs locally on your **NVIDIA GPU** with Whisper.
 
 > The dictation language is French. The extension interface and the voice commands are in French too (quoted below with their English meaning).
@@ -18,7 +18,7 @@ Everything below was tested end to end on a Windows laptop with an RTX 4050 (6 G
 
 | Check | Measured result |
 |---|---|
-| GPU used | `cuda` / `float16`, RTX 4050 Laptop, 6,141 MB |
+| GPU used | `cuda` / `int8_float16`, RTX 4050 Laptop, 6,141 MB |
 | Speed | **9.5 s of audio transcribed in 243 ms, about 39× real time** |
 | Model loading | 26 s the first time (download), **1.8 s** afterwards |
 | Splitting at pauses | live partial text, then `FINAL` about 0.9 s after the pause |
@@ -121,6 +121,7 @@ The **whole-chunk rule** prevents false positives: saying « je vais valider le 
 | DeepSeek (PWA) | ✅ |
 | chat.deepseek.com in Chrome | ✅ |
 | http://127.0.0.1:3080 in Chrome | ✅ |
+| www.doubao.com in Chrome | ✅ (generic composer detection, not yet checked on the live site) |
 
 ---
 
@@ -133,12 +134,13 @@ The server then starts **by itself, with no window**, each time you log in to Wi
 | | |
 |---|---|
 | Cost when you are not dictating | about 60 MB of RAM, **0 MB of VRAM** |
-| First dictation after startup | about 2 s to load the model, once |
+| First dictation after startup | no wait: the model loads (about 1.5 s) as soon as DeepSeek, Harness or Doubao is opened |
+| VRAM release | after 10 min without dictation (`idle_unload_min`); reloaded on the next page open or mic press |
 | Log | `logs\serveur.log` |
 | Turn off | run `demarrage-auto.bat` again → `2` |
 | Check status | run `demarrage-auto.bat` again → `3` |
 
-The model is **not** preloaded at startup, on purpose, so it does not hold 0.8 GB of VRAM all the time. If you prefer it warm from the start, set `"preload": true` in `config.json`.
+The model is **not** preloaded when Windows starts, so it does not hold VRAM all the time. Instead, the extension asks the server to load it **as soon as you open DeepSeek, DeepSeek Harness or Doubao** (`POST /warmup`), and the server frees it after `idle_unload_min` minutes without dictation (10 by default, `0` = never). If you prefer it always warm, set `"preload": true` and `"idle_unload_min": 0` in `config.json`.
 
 `start.bat` stays useful to see live messages, change model from the command line, or dictate without waiting for the next login.
 
@@ -359,7 +361,7 @@ dictaphone/
 
 ## 9. Under the hood
 
-- **`faster-whisper`** (CTranslate2): same quality as OpenAI's Whisper, 4 to 8× faster, `float16` on CUDA.
+- **`faster-whisper`** (CTranslate2): same quality as OpenAI's Whisper, 4 to 8× faster, `int8_float16` on CUDA (int8 weights, float16 compute: half the VRAM, same text). The model is loaded from the local cache first, with no call to huggingface.co.
 - **Silero VAD** (bundled): detects speech and silence to cut without chopping words.
 - **Sliding `initial_prompt`**: the text already written is given to the model as context, which keeps punctuation and vocabulary consistent from one sentence to the next.
 - **Local post-processing** (`cleanup.py`): removes "euh" fillers, restores capitals, fixes spaces before punctuation, applies your custom dictionary. No network call.
@@ -375,6 +377,7 @@ Useful if you want to plug something else into it.
 |---|---|
 | `GET /health` | engine status (model, device, VRAM, latency) |
 | `GET /config` | current configuration |
+| `POST /warmup` | loads the model in the background (called by the extension when a supported page opens) |
 | `POST /model?name=medium` | switches model live |
 | `POST /transcribe` | body = PCM16 LE mono 16 kHz → `{"text": "..."}` |
 | `WS /ws` | binary = PCM, text = JSON (`start`, `stop`, `reset`) |
