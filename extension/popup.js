@@ -155,7 +155,7 @@ async function toggleInTab() {
     await chrome.tabs.sendMessage(tab.id, { type: recording ? "stop" : "toggle" });
     window.close();
   } catch {
-    setStatus("Onglet non pris en charge — ouvre DeepSeek ou DeepSeek Harness", "bad");
+    setStatus("Onglet non pris en charge — ouvre DeepSeek, DeepSeek Harness ou Doubao", "bad");
   }
 }
 

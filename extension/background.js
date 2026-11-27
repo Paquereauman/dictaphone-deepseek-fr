@@ -228,6 +228,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true; // reponse asynchrone
   }
 
+  if (msg.type === "warmup") {
+    warmup().then((r) => sendResponse(r));
+    return true;
+  }
+
   if (msg.type === "badge") {
     // Pastille « REC » : l'enregistrement reste visible meme si le bouton
     // flottant est masque par l'interface du site.
@@ -242,6 +247,34 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   return false;
 });
+
+/** Demande au serveur de charger le modele (onglet DeepSeek / Doubao ouvert).
+ *  Si le serveur ne tourne pas, on le lance via l'hote natif puis on reessaie. */
+async function warmup() {
+  await refreshSettings();
+  const base = String(settings.serverUrl || DEFAULTS.serverUrl).trim().replace(/\/+$/, "");
+  const call = () => fetch(base + "/warmup", { method: "POST", signal: AbortSignal.timeout(1500) }).then((r) => r.json());
+  try {
+    return await call();
+  } catch {
+    await new Promise((res) => {
+      try {
+        chrome.runtime.sendNativeMessage("com.dictaphone.launcher", { cmd: "start" }, () => {
+          void chrome.runtime.lastError;
+          res();
+        });
+      } catch {
+        res();
+      }
+    });
+    // Le serveur met quelques secondes a demarrer.
+    for (let i = 0; i < 10; i += 1) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try { return await call(); } catch { /* pas encore pret */ }
+    }
+    return { ok: false };
+  }
+}
 
 // La pastille ne doit jamais rester bloquee apres un redemarrage du navigateur.
 chrome.runtime.onStartup.addListener(() => chrome.action.setBadgeText({ text: "" }));

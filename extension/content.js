@@ -2,7 +2,8 @@
  * Dictaphone FR — content script.
  *
  * S'injecte dans DeepSeek (chat.deepseek.com), dans l'application PWA DeepSeek,
- * dans DeepSeek Harness (127.0.0.1:3080) et dans sa version navigateur.
+ * dans DeepSeek Harness (127.0.0.1:3080), dans sa version navigateur et dans
+ * Doubao (www.doubao.com).
  *
  * - capture le micro (PCM 16 kHz mono) et l'envoie au service worker ;
  * - affiche un bouton micro flottant + un apercu du texte en cours ;
@@ -339,7 +340,8 @@
   function beep(freq, ms) {
     if (!settings.beep) return;
     try {
-      const ctx = audio?.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audio?.ctx || getAudioContext();
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.frequency.value = freq;
@@ -352,7 +354,7 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + ms / 1000);
       osc.start(t);
       osc.stop(t + ms / 1000 + 0.02);
-      if (!audio) setTimeout(() => ctx.close?.(), ms + 120);
+      if (!audio) setTimeout(() => { if (!audio && ctx.state === "running") ctx.suspend().catch(() => {}); }, ms + 150);
     } catch {
       /* le son est un bonus */
     }
@@ -550,21 +552,44 @@
   // ----------------------------------------------------------------------- //
   //  Capture micro
   // ----------------------------------------------------------------------- //
-  async function openMicrophone() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-    const ctx = new AudioContext({ sampleRate: SR });
-    // Chrome peut demarrer l'AudioContext en "suspended" (politique autoplay,
-    // ou onglet en arriere-plan) : sans resume, aucun echantillon n'arrive.
-    if (ctx.state === "suspended") {
-      try { await ctx.resume(); } catch { /* ignore */ }
+  // Contexte audio partage entre les dictees : le recreer (et recharger le
+  // module AudioWorklet) a chaque appui coutait plusieurs centaines de ms
+  // avant que le micro n'ecoute vraiment. Seul le flux micro est ouvert et
+  // ferme a chaque dictee (le voyant micro de Chrome s'eteint donc bien).
+  let sharedCtx = null;
+  let workletLoaded = null; // Promise<boolean>
+
+  function getAudioContext() {
+    if (!sharedCtx || sharedCtx.state === "closed") {
+      sharedCtx = new AudioContext({ sampleRate: SR });
+      workletLoaded = sharedCtx.audioWorklet
+        .addModule(chrome.runtime.getURL("pcm-worklet.js"))
+        .then(() => true)
+        .catch((err) => {
+          console.debug("[dictaphone] AudioWorklet indisponible :", String(err));
+          return false;
+        });
     }
+    return sharedCtx;
+  }
+
+  async function openMicrophone() {
+    const t0 = performance.now();
+    // Micro et contexte audio en parallele plutot qu'a la suite.
+    const ctx = getAudioContext();
+    const resumed = ctx.state === "suspended" ? ctx.resume().catch(() => {}) : Promise.resolve();
+    const [stream, hasWorklet] = await Promise.all([
+      navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      }),
+      workletLoaded,
+      resumed,
+    ]);
     const src = ctx.createMediaStreamSource(stream);
     const sink = ctx.createGain();
     sink.gain.value = 0;
@@ -592,7 +617,7 @@
 
     let worklet = null;
     try {
-      await ctx.audioWorklet.addModule(chrome.runtime.getURL("pcm-worklet.js"));
+      if (!hasWorklet) throw new Error("module non charge");
       worklet = new AudioWorkletNode(ctx, "pcm-worklet");
       worklet.port.onmessage = (ev) => emit(ev.data);
       src.connect(worklet);
@@ -618,6 +643,7 @@
     }
     streamsOpened += 1;
     syncDebug();
+    console.debug(`[dictaphone] micro pret en ${Math.round(performance.now() - t0)} ms`);
     return audio_;
   }
 
@@ -644,7 +670,12 @@
     try { a.src.disconnect(); } catch { /* ignore */ }
     try { a.sink.disconnect(); } catch { /* ignore */ }
     try { a.stream?.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ }
-    try { a.ctx?.close(); } catch { /* ignore */ }
+    // Le contexte partage est mis en pause, pas detruit : la prochaine dictee
+    // repart sans le recreer.
+    if (a.ctx && a.ctx !== sharedCtx) { try { a.ctx.close(); } catch { /* ignore */ } }
+    else if (!audio || audio === a) {
+      setTimeout(() => { if (!audio && sharedCtx?.state === "running") sharedCtx.suspend().catch(() => {}); }, 300);
+    }
   }
 
   function closeMicrophone() {
@@ -918,8 +949,23 @@
     return false;
   });
 
+  // Prechargement : des que l'onglet est ouvert (ou revient au premier plan),
+  // on demande au serveur de charger le modele. Le premier appui sur le micro
+  // n'attend plus son chargement (~8 s). Limite a une demande par minute : le
+  // serveur libere la VRAM apres un long moment sans dictee.
+  let lastWarmup = 0;
+  function requestWarmup() {
+    if (document.hidden) return;
+    const now = Date.now();
+    if (now - lastWarmup < 60_000) return;
+    lastWarmup = now;
+    try { chrome.runtime.sendMessage({ type: "warmup" }, () => void chrome.runtime.lastError); } catch { /* extension rechargee */ }
+  }
+  window.addEventListener("focus", requestWarmup);
+
   // Garde-fou : onglet masque (changement d'onglet, fenetre minimisee).
   document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) requestWarmup();
     if (document.hidden && settings.stopOnHide && (state === "listening" || state === "starting")) {
       stopCapture("onglet masque");
     }
@@ -960,6 +1006,8 @@
     // Ne pas ecraser le libelle d'arret pendant une ecoute.
     if (ui && state !== "listening") ui.fab.title = `Dicter — ${settings.shortcut}`;
   });
+
+  requestWarmup();
 
   loadSettings(() => {
     buildUI();

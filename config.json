@@ -5,17 +5,18 @@
   "model": "small",
   "language": "fr",
   "device": "auto",
-  "compute_type": "auto",
+  "compute_type": "int8_float16",
   "beam_size": 5,
   "partial_beam_size": 1,
 
-  "silence_ms": 700,
+  "silence_ms": 500,
   "min_speech_ms": 250,
   "max_chunk_s": 18.0,
-  "partial_interval_ms": 800,
+  "partial_interval_ms": 500,
 
   "preload": false,
   "warmup": true,
+  "idle_unload_min": 10,
 
   "vocabulary": "DeepSeek, DeepSeek Harness, Claude Code, ChatGPT, WebSocket, FastAPI, Python, Whisper, Chrome, Windows, API, extension.",
 
